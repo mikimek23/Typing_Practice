@@ -238,7 +238,7 @@ export const HistoryPage = () => {
                     >
                       <td className='py-3.5 px-4 text-xs font-semibold text-[var(--muted-strong)] flex items-center gap-2'>
                         <Calendar size={14} className='text-[var(--muted)]' />
-                        {formatDate(item.created_at)}
+                        {formatDate(item.completedAt)}
                       </td>
                       <td className='py-3.5 px-4 font-black text-[var(--foreground)]'>
                         <span className='text-base text-cyan-600 dark:text-cyan-400 font-bold'>

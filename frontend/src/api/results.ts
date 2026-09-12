@@ -22,6 +22,7 @@ export type TypingResult = {
   incorrectCharacters: number
   totalKeyPress?: number
   completedAt: string
+  created_at?: string
 }
 
 export type ResultListResponse = {
