@@ -14,7 +14,7 @@ export const errorHandler = (
       message: err.message,
     })
   }
-
+  console.log(err.message)
   res.status(500).json({
     success: false,
     message: 'Internal server error',

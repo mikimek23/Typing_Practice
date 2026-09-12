@@ -12,17 +12,22 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock3,
+  Code2,
   Gauge,
   Keyboard,
   RefreshCw,
+  Sparkles,
   Target,
+  Type,
 } from 'lucide-react'
 import { getApiErrorMessage } from '../api/axios'
 import { type TypingMode } from '../api/results'
 import { getDefaultTexts, type Difficulty, type TypingText } from '../api/texts'
 import { Button } from '../components/Button'
+import { KeyboardVisualizer } from '../components/KeyboardVisualizer'
 import { useAuth } from '../hooks/useAuth'
-import type { CompletedTestResult } from '../types/testResult'
+import type { CompletedTestResult, TimelinePoint } from '../types/testResult'
+import { soundEngine } from '../utils/audio'
 
 type TestStatus = 'idle' | 'running' | 'finished'
 type TextSize = 'comfort' | 'large' | 'extra'
@@ -39,27 +44,19 @@ type MetricProps = {
 }
 
 const textSizeStorageKey = 'typing_text_size'
+const fontTypeStorageKey = 'typing_font_family'
+const showKeyboardStorageKey = 'typing_show_keyboard'
+const timedDurationStorageKey = 'typing_timed_duration'
+
 const difficulties: Difficulty[] = ['easy', 'medium', 'hard']
 const modes: TypingMode[] = ['timed', 'passage']
-const textSizes: Array<{ value: TextSize; label: string; className: string }> =
-  [
-    {
-      value: 'comfort',
-      label: 'Comfort',
-      className: 'typing-size-comfort',
-    },
-    {
-      value: 'large',
-      label: 'Large',
-      className: 'typing-size-large',
-    },
-    {
-      value: 'extra',
-      label: 'Extra large',
-      className: 'typing-size-extra',
-    },
-  ]
-const timedLimitSeconds = 60
+const timedOptions = [15, 30, 60, 120]
+
+const textSizes: Array<{ value: TextSize; label: string }> = [
+  { value: 'comfort', label: 'Comfort' },
+  { value: 'large', label: 'Large' },
+  { value: 'extra', label: 'Extra' },
+]
 
 const FALLBACK_TEXTS: TypingText[] = [
   {
@@ -86,6 +83,31 @@ const FALLBACK_TEXTS: TypingText[] = [
   },
 ]
 
+const CODE_TEXTS: TypingText[] = [
+  {
+    id: 'code-js-async',
+    title: 'JavaScript Async / Await',
+    content:
+      'async function fetchData(url) { try { const res = await fetch(url); const json = await res.json(); return json; } catch (err) { console.error(err); } }',
+    difficulty: 'MEDIUM',
+    source_type: 'DEFAULT',
+    wordCount: 28,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+  {
+    id: 'code-react-hook',
+    title: 'React Custom Hook',
+    content:
+      'const [count, setCount] = useState(0); useEffect(() => { const timer = setInterval(() => setCount((c) => c + 1), 1000); return () => clearInterval(timer); }, []);',
+    difficulty: 'HARD',
+    source_type: 'DEFAULT',
+    wordCount: 26,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+]
+
 const formatDifficulty = (difficulty: string) =>
   difficulty.charAt(0).toUpperCase() + difficulty.slice(1).toLowerCase()
 
@@ -106,27 +128,25 @@ const readStoredTextSize = (): TextSize => {
 
 const Metric = ({ label, value, icon, tone = 'cyan' }: MetricProps) => {
   const toneClasses = {
-    cyan: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/45 dark:text-cyan-200',
-    emerald:
-      'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/45 dark:text-emerald-200',
-    amber:
-      'bg-amber-50 text-amber-700 dark:bg-amber-950/45 dark:text-amber-200',
-    rose: 'bg-rose-50 text-rose-700 dark:bg-rose-950/45 dark:text-rose-200',
+    cyan: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
   }
 
   return (
-    <div className='app-surface rounded-lg p-2.5 sm:p-4'>
-      <div className='flex items-center gap-2 sm:gap-3'>
+    <div className='app-surface rounded-xl p-3 sm:p-4 shadow-sm border border-[var(--border)] transition-all'>
+      <div className='flex items-center gap-2.5 sm:gap-3.5'>
         <span
-          className={`hidden h-10 w-10 place-items-center rounded-md sm:grid ${toneClasses[tone]}`}
+          className={`grid h-9 w-9 place-items-center rounded-lg sm:h-11 sm:w-11 ${toneClasses[tone]}`}
         >
           {icon}
         </span>
         <div className='min-w-0'>
-          <p className='truncate text-[0.64rem] font-bold uppercase tracking-wide app-muted sm:text-xs'>
+          <p className='truncate text-[0.66rem] font-bold uppercase tracking-wider text-[var(--muted)] sm:text-xs'>
             {label}
           </p>
-          <p className='mt-0.5 truncate text-lg font-black app-text sm:mt-1 sm:text-2xl'>
+          <p className='mt-0.5 truncate text-xl font-black text-[var(--foreground)] sm:mt-1 sm:text-2xl'>
             {value}
           </p>
         </div>
@@ -142,22 +162,62 @@ export const TypingPage = () => {
   const practiceText = locationState?.practiceText
   const { isAuthenticated, user } = useAuth()
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
+  const typingContainerRef = useRef<HTMLDivElement | null>(null)
   const hasNavigatedToResult = useRef(false)
+
   const [difficulty, setDifficulty] = useState<Difficulty>('medium')
   const [mode, setMode] = useState<TypingMode>('timed')
+  const [timedDuration, setTimedDuration] = useState<number>(() => {
+    if (typeof window === 'undefined') return 60
+    const val = parseInt(
+      window.localStorage.getItem(timedDurationStorageKey) || '60',
+      10,
+    )
+    return timedOptions.includes(val) ? val : 60
+  })
+  const [isCodeMode, setIsCodeMode] = useState(false)
   const [textSize, setTextSize] = useState<TextSize>(readStoredTextSize)
+  const [isMonospace, setIsMonospace] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
+    return window.localStorage.getItem(fontTypeStorageKey) !== 'sans'
+  })
+  const [showKeyboard, setShowKeyboard] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem(showKeyboardStorageKey) === 'true'
+  })
+
   const [texts, setTexts] = useState<TypingText[]>([])
   const [selectedTextId, setSelectedTextId] = useState('')
   const [isLoadingTexts, setIsLoadingTexts] = useState(true)
   const [textError, setTextError] = useState('')
   const [typed, setTyped] = useState('')
+  const [lastKeyPressed, setLastKeyPressed] = useState<string | null>(null)
   const [totalKeyPresses, setTotalKeyPresses] = useState(0)
   const [status, setStatus] = useState<TestStatus>('idle')
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [timeline, setTimeline] = useState<TimelinePoint[]>([])
 
   useEffect(() => {
     window.localStorage.setItem(textSizeStorageKey, textSize)
   }, [textSize])
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      fontTypeStorageKey,
+      isMonospace ? 'mono' : 'sans',
+    )
+  }, [isMonospace])
+
+  useEffect(() => {
+    window.localStorage.setItem(showKeyboardStorageKey, showKeyboard.toString())
+  }, [showKeyboard])
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      timedDurationStorageKey,
+      timedDuration.toString(),
+    )
+  }, [timedDuration])
 
   useEffect(() => {
     if (!practiceText) return
@@ -171,11 +231,20 @@ export const TypingPage = () => {
     setTyped('')
     setElapsedSeconds(0)
     setTotalKeyPresses(0)
+    setTimeline([])
     hasNavigatedToResult.current = false
   }, [practiceText])
 
   useEffect(() => {
     if (practiceText) return
+
+    if (isCodeMode) {
+      setTexts(CODE_TEXTS)
+      setSelectedTextId(CODE_TEXTS[0].id)
+      setIsLoadingTexts(false)
+      setTextError('')
+      return
+    }
 
     let ignore = false
     setIsLoadingTexts(true)
@@ -206,7 +275,7 @@ export const TypingPage = () => {
     return () => {
       ignore = true
     }
-  }, [difficulty, practiceText])
+  }, [difficulty, practiceText, isCodeMode])
 
   const activeText = useMemo(
     () => texts.find((text) => text.id === selectedTextId) ?? texts[0],
@@ -224,11 +293,15 @@ export const TypingPage = () => {
     effectiveDuration > 0
       ? Math.floor(correctCharacters / 5 / (effectiveDuration / 60))
       : 0
+  const rawWpm =
+    effectiveDuration > 0
+      ? Math.floor(totalKeyPresses / 5 / (effectiveDuration / 60))
+      : 0
   const accuracy =
     totalKeyPresses > 0
       ? Math.floor((correctCharacters / totalKeyPresses) * 100)
       : 100
-  const remainingSeconds = Math.max(timedLimitSeconds - elapsedSeconds, 0)
+  const remainingSeconds = Math.max(timedDuration - elapsedSeconds, 0)
   const progress = content
     ? Math.min(Math.round((typed.length / content.length) * 100), 100)
     : 0
@@ -240,31 +313,52 @@ export const TypingPage = () => {
     setTotalKeyPresses(0)
     setStatus('idle')
     setElapsedSeconds(0)
+    setTimeline([])
+    setLastKeyPressed(null)
     hasNavigatedToResult.current = false
     window.setTimeout(() => inputRef.current?.focus(), 0)
   }, [])
 
   useEffect(() => {
     resetTest()
-  }, [mode, selectedTextId, resetTest])
+  }, [mode, selectedTextId, resetTest, isCodeMode, timedDuration])
 
+  // Timer & Timeline data collection
   useEffect(() => {
     if (status !== 'running') return
 
     const intervalId = window.setInterval(() => {
-      setElapsedSeconds((seconds) => seconds + 1)
+      setElapsedSeconds((sec) => {
+        const nextSec = sec + 1
+        const curDuration = Math.max(nextSec, 1)
+        const curWpm = Math.floor(correctCharacters / 5 / (curDuration / 60))
+        const curRawWpm = Math.floor(totalKeyPresses / 5 / (curDuration / 60))
+
+        setTimeline((prev) => [
+          ...prev,
+          {
+            second: nextSec,
+            wpm: curWpm,
+            rawWpm: curRawWpm,
+            errors: incorrectCharacters,
+          },
+        ])
+        return nextSec
+      })
     }, 1000)
 
     return () => window.clearInterval(intervalId)
-  }, [status])
+  }, [status, correctCharacters, totalKeyPresses, incorrectCharacters])
 
+  // Timed limit finish check
   useEffect(() => {
     if (status !== 'running') return
-    if (mode === 'timed' && elapsedSeconds >= timedLimitSeconds) {
+    if (mode === 'timed' && elapsedSeconds >= timedDuration) {
       setStatus('finished')
     }
-  }, [elapsedSeconds, mode, status])
+  }, [elapsedSeconds, mode, status, timedDuration])
 
+  // Passage complete check
   useEffect(() => {
     if (status !== 'running' || !content) return
     if (typed.length >= content.length) {
@@ -272,6 +366,7 @@ export const TypingPage = () => {
     }
   }, [content, status, typed.length])
 
+  // Navigate to result
   useEffect(() => {
     if (status !== 'finished' || !activeText || hasNavigatedToResult.current) {
       return
@@ -280,11 +375,15 @@ export const TypingPage = () => {
     hasNavigatedToResult.current = true
     const durationSeconds = Math.max(effectiveDuration, 1)
     const result: CompletedTestResult = {
-      textId: activeText.id.startsWith('local-') ? undefined : activeText.id,
+      textId:
+        activeText.id.startsWith('local-') || activeText.id.startsWith('code-')
+          ? undefined
+          : activeText.id,
       textTitle: activeText.title,
       mode,
       durationSeconds,
       wpm,
+      rawWpm,
       accuracy,
       correctCharacters,
       incorrectCharacters,
@@ -293,6 +392,7 @@ export const TypingPage = () => {
       wordCount: activeText.wordCount || getWordCount(content),
       completedAt: new Date().toISOString(),
       saveStatus: isAuthenticated ? 'saving' : 'guest',
+      timeline: timeline.length > 0 ? timeline : undefined,
     }
 
     navigate('/result', { replace: true, state: { result } })
@@ -307,10 +407,29 @@ export const TypingPage = () => {
     mode,
     navigate,
     progress,
+    rawWpm,
     status,
+    timeline,
     totalKeyPresses,
     wpm,
   ])
+
+  // Hotkey listener for Tab+Enter or Esc to restart
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        resetTest()
+      } else if (e.key === 'Tab') {
+        // Prevent default tab blur on test area
+        e.preventDefault()
+        resetTest()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [resetTest])
 
   const handleInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     if (!content || status === 'finished') return
@@ -322,6 +441,17 @@ export const TypingPage = () => {
     }
 
     if (nextValue.length > typed.length) {
+      const addedChar = nextValue[nextValue.length - 1]
+      const expectedChar = content[nextValue.length - 1]
+      setLastKeyPressed(addedChar)
+
+      // Audio trigger
+      if (addedChar === expectedChar) {
+        soundEngine.playKeyClick(addedChar === ' ')
+      } else {
+        soundEngine.playError()
+      }
+
       setTotalKeyPresses((presses) => presses + nextValue.length - typed.length)
     }
 
@@ -333,46 +463,62 @@ export const TypingPage = () => {
   }
 
   return (
-    <main className='app-page py-4 sm:py-8'>
-      <div className='app-shell'>
-        <section className='mb-4 flex flex-col justify-between gap-3 sm:mb-8 lg:flex-row lg:items-end'>
+    <main className='app-page py-6 sm:py-10'>
+      <div className='app-shell space-y-6'>
+        {/* Top Header & Context */}
+        <section className='flex flex-col justify-between gap-4 lg:flex-row lg:items-end'>
           <div>
-            <p className='mb-3 inline-flex items-center gap-2 rounded-md app-surface px-3 py-2 text-sm font-bold app-muted'>
-              <Keyboard size={17} />
-              {isAuthenticated ? `${user?.name}'s workspace` : 'Guest practice'}
-            </p>
-            <h1 className='text-3xl font-black tracking-normal app-text sm:text-5xl'>
-              Measure speed without losing focus.
+            <div className='mb-3 inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--muted)] shadow-xs'>
+              <Sparkles size={15} className='text-cyan-500' />
+              {isAuthenticated
+                ? `${user?.name}'s typing workspace`
+                : 'Guest practice session'}
+            </div>
+            <h1 className='text-3xl font-black tracking-tight text-[var(--foreground)] sm:text-5xl'>
+              Benchmark your typing speed.
             </h1>
-            <p className='mt-3 max-w-2xl text-sm leading-6 app-muted sm:mt-4 sm:text-base sm:leading-7'>
-              Choose a passage, start typing, and review a full result page when
-              you finish.
+            <p className='mt-2.5 max-w-2xl text-sm leading-relaxed text-[var(--muted)] sm:text-base'>
+              Type with live feedback, keyboard guide, and tactile sounds. Press{' '}
+              <kbd className='rounded bg-[var(--surface-soft)] px-1.5 py-0.5 border border-[var(--border)] font-mono text-xs'>
+                Esc
+              </kbd>{' '}
+              or{' '}
+              <kbd className='rounded bg-[var(--surface-soft)] px-1.5 py-0.5 border border-[var(--border)] font-mono text-xs'>
+                Tab
+              </kbd>{' '}
+              anytime to restart.
             </p>
           </div>
 
           {!isAuthenticated && (
-            <div className='rounded-lg border border-amber-300/70 bg-amber-100 p-4 text-sm font-semibold text-amber-950 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100'>
-              Results are local in guest mode.{' '}
+            <div className='rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-3.5 text-xs font-semibold text-cyan-800 dark:text-cyan-200'>
+              Guest mode active.{' '}
               <Link
                 to='/login'
-                className='font-black text-cyan-800 underline dark:text-cyan-200'
+                className='font-black underline underline-offset-2 hover:opacity-80'
               >
-                Login to save history.
+                Sign in to save records to your account.
               </Link>
             </div>
           )}
         </section>
 
-        <section className='mb-3 grid grid-cols-4 gap-2 sm:mb-5 sm:gap-4'>
-          <Metric label='WPM' value={wpm} icon={<Gauge size={20} />} />
+        {/* Live Metrics Bar */}
+        <section className='grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-4'>
+          <Metric
+            label='Net WPM'
+            value={wpm}
+            icon={<Gauge size={20} />}
+            tone='cyan'
+          />
           <Metric
             label='Accuracy'
             value={`${accuracy}%`}
             icon={<Target size={20} />}
-            tone={accuracy >= 90 ? 'emerald' : 'amber'}
+            tone={accuracy >= 94 ? 'emerald' : 'amber'}
           />
           <Metric
-            label={mode === 'timed' ? 'Time left' : 'Elapsed'}
+            label={mode === 'timed' ? 'Time Remaining' : 'Elapsed'}
             value={
               mode === 'timed' ? `${remainingSeconds}s` : `${elapsedSeconds}s`
             }
@@ -383,22 +529,24 @@ export const TypingPage = () => {
             label='Progress'
             value={`${progress}%`}
             icon={<CheckCircle2 size={20} />}
-            tone={incorrectCharacters ? 'rose' : 'emerald'}
+            tone={incorrectCharacters > 0 ? 'rose' : 'emerald'}
           />
         </section>
 
-        <section className='grid gap-4 sm:gap-5'>
-          <section className='app-surface rounded-lg p-3 sm:p-4'>
-            <div className='grid gap-3 lg:grid-cols-[minmax(220px,1fr)_auto_auto_auto] lg:items-end'>
+        {/* Controls Bar */}
+        <section className='app-surface rounded-2xl p-4 shadow-sm border border-[var(--border)]'>
+          <div className='flex flex-wrap items-center justify-between gap-4'>
+            {/* Left: Passage dropdown */}
+            <div className='min-w-[220px] flex-1 sm:max-w-xs'>
               <label className='block'>
-                <span className='text-xs font-black uppercase tracking-wide app-muted'>
+                <span className='text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]'>
                   Passage
                 </span>
                 <select
                   value={selectedTextId}
                   onChange={(event) => setSelectedTextId(event.target.value)}
                   disabled={status === 'running' || isLoadingTexts}
-                  className='app-input mt-2 h-10 w-full rounded-md px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 sm:h-11'
+                  className='app-input mt-1.5 h-10 w-full rounded-xl px-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60'
                 >
                   {texts.map((text) => (
                     <option key={text.id} value={text.id}>
@@ -407,12 +555,86 @@ export const TypingPage = () => {
                   ))}
                 </select>
               </label>
+            </div>
 
+            {/* Mode: Timed / Passage / Code */}
+            <div>
+              <p className='text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]'>
+                Mode
+              </p>
+              <div className='mt-1.5 flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-1'>
+                {modes.map((item) => (
+                  <button
+                    key={item}
+                    type='button'
+                    disabled={status === 'running'}
+                    onClick={() => {
+                      setIsCodeMode(false)
+                      setMode(item)
+                    }}
+                    className={[
+                      'rounded-lg px-3 py-1.5 text-xs font-bold capitalize transition',
+                      !isCodeMode && mode === item
+                        ? 'bg-[var(--foreground)] text-[var(--background)] shadow-xs'
+                        : 'text-[var(--muted)] hover:text-[var(--foreground)]',
+                    ].join(' ')}
+                  >
+                    {item}
+                  </button>
+                ))}
+                <button
+                  type='button'
+                  disabled={status === 'running'}
+                  onClick={() => {
+                    setIsCodeMode(true)
+                  }}
+                  className={[
+                    'inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold transition',
+                    isCodeMode
+                      ? 'bg-cyan-600 text-white dark:bg-cyan-400 dark:text-slate-950 shadow-xs'
+                      : 'text-[var(--muted)] hover:text-[var(--foreground)]',
+                  ].join(' ')}
+                >
+                  <Code2 size={14} />
+                  <span>Code</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Timed duration selector (if in timed mode) */}
+            {mode === 'timed' && (
               <div>
-                <p className='text-xs font-black uppercase tracking-wide app-muted'>
+                <p className='text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]'>
+                  Duration
+                </p>
+                <div className='mt-1.5 flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-1'>
+                  {timedOptions.map((sec) => (
+                    <button
+                      key={sec}
+                      type='button'
+                      disabled={status === 'running'}
+                      onClick={() => setTimedDuration(sec)}
+                      className={[
+                        'rounded-lg px-2.5 py-1.5 text-xs font-bold transition',
+                        timedDuration === sec
+                          ? 'bg-cyan-600 text-white dark:bg-cyan-400 dark:text-slate-950 shadow-xs'
+                          : 'text-[var(--muted)] hover:text-[var(--foreground)]',
+                      ].join(' ')}
+                    >
+                      {sec}s
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Difficulty (when not in code mode) */}
+            {!isCodeMode && (
+              <div>
+                <p className='text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]'>
                   Difficulty
                 </p>
-                <div className='mt-2 grid grid-cols-3 gap-2'>
+                <div className='mt-1.5 flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-1'>
                   {difficulties.map((item) => (
                     <button
                       key={item}
@@ -420,10 +642,10 @@ export const TypingPage = () => {
                       disabled={status === 'running' || Boolean(practiceText)}
                       onClick={() => setDifficulty(item)}
                       className={[
-                        'h-10 rounded-md border px-2 text-xs font-black capitalize transition disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 sm:text-sm',
+                        'rounded-lg px-2.5 py-1.5 text-xs font-bold capitalize transition',
                         difficulty === item
-                          ? 'border-cyan-600 bg-cyan-600 text-white dark:border-cyan-300 dark:bg-cyan-300 dark:text-slate-950'
-                          : 'app-input hover:bg-[var(--surface-soft)]',
+                          ? 'bg-cyan-600 text-white dark:bg-cyan-400 dark:text-slate-950 shadow-xs'
+                          : 'text-[var(--muted)] hover:text-[var(--foreground)]',
                       ].join(' ')}
                     >
                       {item}
@@ -431,46 +653,42 @@ export const TypingPage = () => {
                   ))}
                 </div>
               </div>
+            )}
 
-              <div>
-                <p className='text-xs font-black uppercase tracking-wide app-muted'>
-                  Mode
-                </p>
-                <div className='mt-2 grid grid-cols-2 gap-2'>
-                  {modes.map((item) => (
-                    <button
-                      key={item}
-                      type='button'
-                      disabled={status === 'running'}
-                      onClick={() => setMode(item)}
-                      className={[
-                        'h-10 rounded-md border px-3 text-xs font-black capitalize transition disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm',
-                        mode === item
-                          ? 'border-[var(--foreground)] bg-[var(--foreground)] text-[var(--background)]'
-                          : 'app-input hover:bg-[var(--surface-soft)]',
-                      ].join(' ')}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            {/* Visual Options: Font & Text Size */}
+            <div>
+              <p className='text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]'>
+                Display
+              </p>
+              <div className='mt-1.5 flex items-center gap-2'>
+                {/* Monospace Toggle */}
+                <button
+                  type='button'
+                  onClick={() => setIsMonospace(!isMonospace)}
+                  className={[
+                    'inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition',
+                    isMonospace
+                      ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+                      : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]',
+                  ].join(' ')}
+                  title='Toggle JetBrains Mono / Proportional font'
+                >
+                  <Type size={14} />
+                  <span>Mono</span>
+                </button>
 
-              <div>
-                <p className='text-xs font-black uppercase tracking-wide app-muted'>
-                  Text size
-                </p>
-                <div className='mt-2 grid grid-cols-3 gap-2'>
+                {/* Text size selector */}
+                <div className='flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-1'>
                   {textSizes.map((size) => (
                     <button
                       key={size.value}
                       type='button'
                       onClick={() => setTextSize(size.value)}
                       className={[
-                        'h-10 rounded-md border px-2 text-xs font-black transition sm:px-3 sm:text-sm',
+                        'rounded-lg px-2 py-1 text-xs font-bold transition',
                         textSize === size.value
-                          ? 'border-cyan-600 bg-cyan-600 text-white dark:border-cyan-300 dark:bg-cyan-300 dark:text-slate-950'
-                          : 'app-input hover:bg-[var(--surface-soft)]',
+                          ? 'bg-[var(--foreground)] text-[var(--background)]'
+                          : 'text-[var(--muted)] hover:text-[var(--foreground)]',
                       ].join(' ')}
                     >
                       {size.label}
@@ -479,94 +697,120 @@ export const TypingPage = () => {
                 </div>
               </div>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <div className='app-surface rounded-lg p-4 sm:p-6'>
-            <div className='mb-4 flex flex-col gap-3 border-b app-border pb-4 md:flex-row md:items-center md:justify-between'>
-              <div>
-                <h2 className='text-xl font-black app-text'>
-                  {activeText?.title ?? 'Loading passage'}
-                </h2>
-                <p className='mt-1 text-sm font-medium app-muted'>
-                  {activeText
-                    ? `${formatDifficulty(activeText.difficulty)} - ${
-                        activeText.wordCount || getWordCount(content)
-                      } words - ${progress}% complete`
-                    : 'Preparing your test'}
-                </p>
-              </div>
+        {/* Main Interactive Typing Area */}
+        <section className='app-surface rounded-2xl p-4 sm:p-7 shadow-md border border-[var(--border)]'>
+          <div className='mb-4 flex flex-col gap-3 border-b border-[var(--border)] pb-4 md:flex-row md:items-center md:justify-between'>
+            <div>
+              <h2 className='text-xl font-black tracking-tight text-[var(--foreground)]'>
+                {activeText?.title ?? 'Loading passage...'}
+              </h2>
+              <p className='mt-1 text-xs font-semibold text-[var(--muted)]'>
+                {activeText
+                  ? `${formatDifficulty(activeText.difficulty)} • ${
+                      activeText.wordCount || getWordCount(content)
+                    } words • ${progress}% complete`
+                  : 'Preparing test...'}
+              </p>
+            </div>
+            <div className='flex items-center gap-2'>
               <Button
                 type='button'
                 variant='secondary'
                 onClick={resetTest}
-                icon={<RefreshCw size={17} />}
+                icon={<RefreshCw size={16} />}
               >
-                Restart
+                Restart (<kbd className='font-mono text-xs'>Esc</kbd>)
               </Button>
             </div>
+          </div>
 
-            {textError && (
-              <div className='mb-4 flex items-start gap-2 rounded-md border border-amber-300/70 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-950 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-100'>
-                <AlertCircle className='mt-0.5 shrink-0' size={17} />
-                <span>{textError} Using a local practice passage for now.</span>
+          {textError && (
+            <div className='mb-4 flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs font-semibold text-amber-900 dark:text-amber-200'>
+              <AlertCircle className='mt-0.5 shrink-0' size={16} />
+              <span>
+                {textError} Using default practice passage for this session.
+              </span>
+            </div>
+          )}
+
+          {/* Typing Area Box */}
+          <div
+            ref={typingContainerRef}
+            onClick={focusTypingArea}
+            data-text-size={activeTextSize.value}
+            className={[
+              'typing-text min-h-64 sm:min-h-80 w-full cursor-text rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4 sm:p-7 text-left outline-none transition-all leading-relaxed',
+              isMonospace ? 'font-typing' : '',
+              textSize === 'comfort' ? 'typing-size-comfort' : '',
+              textSize === 'large' ? 'typing-size-large' : '',
+              textSize === 'extra' ? 'typing-size-extra' : '',
+              status === 'running'
+                ? 'ring-2 ring-cyan-500/20 border-cyan-500/50'
+                : 'hover:border-[var(--accent)]',
+            ].join(' ')}
+          >
+            {isLoadingTexts ? (
+              <div className='py-12 text-center text-sm font-semibold text-[var(--muted)]'>
+                Loading passages...
               </div>
-            )}
+            ) : (
+              content.split('').map((character, index) => {
+                const isTyped = index < typed.length
+                const isCurrent =
+                  index === typed.length && status !== 'finished'
+                const isCorrect = typed[index] === character
 
-            <button
-              type='button'
-              onClick={focusTypingArea}
-              className={`typing-text min-h-[18rem] w-full cursor-text rounded-md app-surface-soft p-3 text-left ${activeTextSize.className} outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 sm:min-h-[24rem] sm:p-6`}
-            >
-              {isLoadingTexts ? (
-                <span className='text-base app-muted'>Loading passages...</span>
-              ) : (
-                content.split('').map((character, index) => {
-                  const isTyped = index < typed.length
-                  const isCurrent =
-                    index === typed.length && status !== 'finished'
-                  const isCorrect = typed[index] === character
-
-                  return (
+                return (
+                  <span key={index} className='relative inline'>
+                    {isCurrent && <span className='typing-caret' />}
                     <span
-                      key={index}
                       className={[
-                        'rounded-sm',
+                        'transition-colors duration-75',
                         isTyped && isCorrect
-                          ? 'text-emerald-700 dark:text-emerald-300'
+                          ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
                           : '',
                         isTyped && !isCorrect
-                          ? 'bg-rose-200 text-rose-900 underline decoration-rose-700 dark:bg-rose-950 dark:text-rose-200 dark:decoration-rose-300'
+                          ? 'bg-rose-500/20 text-rose-600 underline decoration-rose-500 decoration-2 dark:text-rose-400 rounded-xs px-0.5'
                           : '',
-                        !isTyped ? 'text-[var(--muted-strong)]' : '',
-                        isCurrent
-                          ? 'bg-cyan-300 text-slate-950 dark:bg-cyan-300 dark:text-slate-950'
-                          : '',
+                        !isTyped ? 'text-[var(--muted)] opacity-65' : '',
+                        isCurrent ? 'font-bold text-[var(--foreground)]' : '',
                       ].join(' ')}
                     >
                       {character}
                     </span>
-                  )
-                })
-              )}
-            </button>
-
-            <textarea
-              ref={inputRef}
-              value={typed}
-              onChange={handleInputChange}
-              className='absolute h-px w-px resize-none opacity-0'
-              aria-label='Typing input'
-              disabled={!content || status === 'finished'}
-            />
-
-            {status === 'idle' && content && (
-              <p className='mt-4 text-sm font-semibold app-muted'>
-                Click the passage and start typing. Controls lock once the timer
-                begins.
-              </p>
+                  </span>
+                )
+              })
             )}
           </div>
+
+          <textarea
+            ref={inputRef}
+            value={typed}
+            onChange={handleInputChange}
+            className='absolute h-px w-px resize-none opacity-0'
+            aria-label='Typing input'
+            disabled={!content || status === 'finished'}
+          />
+
+          {status === 'idle' && content && (
+            <p className='mt-4 text-xs font-semibold text-[var(--muted)] flex items-center gap-1.5'>
+              <Keyboard size={15} />
+              Click the passage above and begin typing to start the benchmark.
+            </p>
+          )}
         </section>
+
+        {/* Live Interactive Keyboard Visualizer */}
+        <KeyboardVisualizer
+          activeKey={lastKeyPressed}
+          nextKey={content[typed.length] || null}
+          isVisible={showKeyboard}
+          onToggle={() => setShowKeyboard(!showKeyboard)}
+        />
       </div>
     </main>
   )

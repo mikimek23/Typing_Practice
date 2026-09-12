@@ -45,110 +45,133 @@ export const AuthPage = ({ mode }: AuthPageProps) => {
   }
 
   return (
-    <main className='mx-auto grid min-h-[calc(100vh-89px)] max-w-6xl items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_420px]'>
-      <section className='max-w-2xl'>
-        <div className='mb-6 inline-flex items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm font-semibold text-cyan-800 dark:border-cyan-900/70 dark:bg-cyan-950/50 dark:text-cyan-200'>
-          <ShieldCheck size={17} />
-          Save progress across every session
-        </div>
-        <h1 className='text-4xl font-black tracking-normal text-slate-950 dark:text-white sm:text-5xl'>
-          Build a typing record you can actually improve.
-        </h1>
-        <p className='mt-5 max-w-xl text-base leading-7 text-slate-600 dark:text-slate-300'>
-          Guests can practice instantly. Accounts add saved results, history,
-          and private passages that fit the backend already in this project.
-        </p>
-      </section>
-
-      <section className='rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900'>
-        <div className='mb-6'>
-          <h2 className='text-2xl font-black text-slate-950 dark:text-white'>
-            {isRegister ? 'Create account' : 'Welcome back'}
-          </h2>
-          <p className='mt-1 text-sm text-slate-500 dark:text-slate-400'>
-            {isRegister
-              ? 'Register, then start saving your best tests.'
-              : 'Log in to save results and manage custom texts.'}
-          </p>
-        </div>
-
-        {error && (
-          <div className='mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200'>
-            {error}
+    <main className='app-page flex min-h-[calc(100vh-73px)] items-center py-10 sm:py-16'>
+      <div className='app-shell grid items-center gap-10 lg:grid-cols-[1.1fr_420px]'>
+        <section className='motion-rise space-y-6'>
+          <div className='inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1.5 text-xs font-bold text-[var(--muted)] shadow-xs'>
+            <ShieldCheck size={16} className='text-cyan-500' />
+            <span>Encrypted Session & Persistence</span>
           </div>
-        )}
+          <h1 className='text-4xl font-black tracking-tight text-[var(--foreground)] sm:text-5xl sm:leading-[1.15]'>
+            Save your typing record across every session.
+          </h1>
+          <p className='max-w-xl text-base leading-relaxed text-[var(--muted)]'>
+            Practice as a guest anytime. Creating an account unlocks saved
+            history, average WPM charts, and personal custom text libraries
+            stored securely in the backend.
+          </p>
+          <div className='grid grid-cols-2 gap-3 max-w-md pt-2'>
+            <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-xs'>
+              <p className='font-bold text-xs text-[var(--foreground)]'>
+                ⚡ Instant Sync
+              </p>
+              <p className='mt-1 text-[0.72rem] text-[var(--muted)]'>
+                Auto-saves completed tests
+              </p>
+            </div>
+            <div className='rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 shadow-xs'>
+              <p className='font-bold text-xs text-[var(--foreground)]'>
+                📚 Custom Library
+              </p>
+              <p className='mt-1 text-[0.72rem] text-[var(--muted)]'>
+                Private passages & snippets
+              </p>
+            </div>
+          </div>
+        </section>
 
-        <form className='space-y-4' onSubmit={handleSubmit}>
-          {isRegister && (
-            <label className='block'>
-              <span className='text-sm font-semibold text-slate-700 dark:text-slate-200'>
-                Name
-              </span>
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
-                minLength={3}
-                className='mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white'
-                placeholder='Jane Typist'
-              />
-            </label>
+        <section className='app-surface rounded-3xl p-6 sm:p-8 shadow-xl border border-[var(--border)]'>
+          <div className='mb-6'>
+            <h2 className='text-2xl font-black text-[var(--foreground)]'>
+              {isRegister ? 'Create Account' : 'Welcome Back'}
+            </h2>
+            <p className='mt-1 text-xs text-[var(--muted)]'>
+              {isRegister
+                ? 'Join to track your WPM growth over time.'
+                : 'Sign in to access your saved test history.'}
+            </p>
+          </div>
+
+          {error && (
+            <div className='mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs font-semibold text-rose-800 dark:text-rose-200'>
+              {error}
+            </div>
           )}
 
-          <label className='block'>
-            <span className='text-sm font-semibold text-slate-700 dark:text-slate-200'>
-              Email
-            </span>
-            <input
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-              type='email'
-              className='mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white'
-              placeholder='you@example.com'
-            />
-          </label>
-
-          <label className='block'>
-            <span className='text-sm font-semibold text-slate-700 dark:text-slate-200'>
-              Password
-            </span>
-            <input
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              type='password'
-              minLength={8}
-              className='mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-950 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white'
-              placeholder='At least 8 characters'
-            />
+          <form className='space-y-4' onSubmit={handleSubmit}>
             {isRegister && (
-              <span className='mt-2 block text-xs font-medium text-slate-500 dark:text-slate-400'>
-                Include uppercase, lowercase, number, and one of @$!%*?&.
-              </span>
+              <div>
+                <label className='block text-xs font-bold uppercase tracking-wider text-[var(--muted)]'>
+                  Name
+                </label>
+                <input
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                  minLength={3}
+                  className='app-input mt-1.5 h-10 w-full rounded-xl px-3.5 text-sm font-semibold'
+                  placeholder='e.g., Alex Typist'
+                />
+              </div>
             )}
-          </label>
 
-          <Button
-            type='submit'
-            isFullWidth
-            isLoading={isSubmitting}
-            icon={isRegister ? <UserPlus size={17} /> : <LogIn size={17} />}
-          >
-            {isRegister ? 'Create account' : 'Login'}
-          </Button>
-        </form>
+            <div>
+              <label className='block text-xs font-bold uppercase tracking-wider text-[var(--muted)]'>
+                Email
+              </label>
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                type='email'
+                className='app-input mt-1.5 h-10 w-full rounded-xl px-3.5 text-sm font-semibold'
+                placeholder='you@example.com'
+              />
+            </div>
 
-        <p className='mt-5 text-center text-sm text-slate-500 dark:text-slate-400'>
-          {isRegister ? 'Already have an account?' : 'New here?'}{' '}
-          <Link
-            to={isRegister ? '/login' : '/register'}
-            className='font-bold text-cyan-700 hover:text-cyan-600 dark:text-cyan-300'
-          >
-            {isRegister ? 'Login' : 'Create one'}
-          </Link>
-        </p>
-      </section>
+            <div>
+              <label className='block text-xs font-bold uppercase tracking-wider text-[var(--muted)]'>
+                Password
+              </label>
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                type='password'
+                minLength={8}
+                className='app-input mt-1.5 h-10 w-full rounded-xl px-3.5 text-sm font-semibold'
+                placeholder='At least 8 characters'
+              />
+              {isRegister && (
+                <span className='mt-1.5 block text-[0.7rem] text-[var(--muted)]'>
+                  Requires uppercase, lowercase, number, and special character.
+                </span>
+              )}
+            </div>
+
+            <div className='pt-2'>
+              <Button
+                type='submit'
+                isFullWidth
+                isLoading={isSubmitting}
+                icon={isRegister ? <UserPlus size={16} /> : <LogIn size={16} />}
+              >
+                {isRegister ? 'Create Account' : 'Sign In'}
+              </Button>
+            </div>
+          </form>
+
+          <p className='mt-6 text-center text-xs text-[var(--muted)]'>
+            {isRegister ? 'Already have an account?' : 'Need an account?'}{' '}
+            <Link
+              to={isRegister ? '/login' : '/register'}
+              className='font-bold text-cyan-600 dark:text-cyan-400 hover:underline'
+            >
+              {isRegister ? 'Sign in' : 'Create one here'}
+            </Link>
+          </p>
+        </section>
+      </div>
     </main>
   )
 }

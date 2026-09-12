@@ -4,35 +4,39 @@
 
 :root {
   color-scheme: light;
-  --background: #f6f7fb;
+  --background: #f8fafc;
   --foreground: #0f172a;
   --surface: #ffffff;
-  --surface-soft: #eef4f8;
-  --surface-strong: #e1eaf0;
-  --border: #d4dde6;
-  --muted: #5f6f82;
+  --surface-soft: #f1f5f9;
+  --surface-strong: #e2e8f0;
+  --border: #e2e8f0;
+  --border-subtle: #edf2f7;
+  --muted: #64748b;
   --muted-strong: #334155;
-  --accent: #0891b2;
-  --accent-strong: #0e7490;
-  --success: #047857;
-  --danger: #be123c;
-  --warning: #b45309;
+  --accent: #0284c7;
+  --accent-strong: #0369a1;
+  --accent-glow: rgba(2, 132, 199, 0.18);
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
 }
 
 :root.dark {
   color-scheme: dark;
-  --background: #05070d;
-  --foreground: #e5edf5;
-  --surface: #101622;
-  --surface-soft: #161f2e;
-  --surface-strong: #202c3d;
-  --border: #2d3a4e;
-  --muted: #a7b4c6;
+  --background: #090d16;
+  --foreground: #f1f5f9;
+  --surface: #0f1626;
+  --surface-soft: #162033;
+  --surface-strong: #1e2b44;
+  --border: #24324c;
+  --border-subtle: #192437;
+  --muted: #94a3b8;
   --muted-strong: #cbd5e1;
-  --accent: #22d3ee;
-  --accent-strong: #67e8f9;
-  --success: #34d399;
-  --danger: #fb7185;
+  --accent: #06b6d4;
+  --accent-strong: #22d3ee;
+  --accent-glow: rgba(6, 182, 212, 0.22);
+  --success: #10b981;
+  --danger: #f43f5e;
   --warning: #fbbf24;
 }
 
@@ -47,11 +51,15 @@ body {
   min-height: 100vh;
   background-color: var(--background);
   color: var(--foreground);
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   transition:
-    background-color 180ms ease,
-    color 180ms ease;
+    background-color 200ms ease,
+    color 200ms ease;
+  overflow-x: hidden;
+}
+
+.font-typing {
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, monospace;
 }
 
 button,
@@ -62,14 +70,16 @@ textarea {
 }
 
 ::selection {
-  background: rgba(8, 145, 178, 0.24);
+  background: var(--accent-glow);
+  color: var(--accent-strong);
 }
 
 @layer components {
-  .app-page {
+    .app-page {
     min-height: calc(100vh - 73px);
     background:
-      radial-gradient(circle at top left, rgba(8, 145, 178, 0.13), transparent 32rem),
+      radial-gradient(circle at 15% 15%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 32rem),
+      radial-gradient(circle at 85% 85%, color-mix(in srgb, var(--accent-strong) 10%, transparent), transparent 28rem),
       linear-gradient(180deg, var(--background), var(--background));
     color: var(--foreground);
   }
@@ -81,13 +91,13 @@ textarea {
 
   .app-surface {
     border: 1px solid var(--border);
-    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
     color: var(--foreground);
-    box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.1);
   }
 
   .app-surface-soft {
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     background: var(--surface-soft);
     color: var(--foreground);
   }
@@ -113,27 +123,62 @@ textarea {
   .app-input:focus {
     border-color: var(--accent);
     outline: 0;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
   }
 
   .typing-text {
-    font-weight: 650;
-    letter-spacing: 0;
+    font-weight: 550;
+    letter-spacing: -0.01em;
+    user-select: none;
+    word-break: break-word;
   }
 
   .typing-size-comfort {
-    font-size: 1.55rem;
-    line-height: 1.72;
+    font-size: 1.35rem;
+    line-height: 1.75;
   }
 
   .typing-size-large {
-    font-size: 1.9rem;
-    line-height: 1.64;
+    font-size: 1.7rem;
+    line-height: 1.68;
   }
 
   .typing-size-extra {
-    font-size: 2.2rem;
-    line-height: 1.58;
+    font-size: 2.05rem;
+    line-height: 1.62;
+  }
+
+  /* Smooth interactive caret */
+  .typing-caret {
+    display: inline-block;
+    width: 2.5px;
+    height: 1.25em;
+    vertical-align: text-bottom;
+    background-color: var(--accent);
+    border-radius: 1.5px;
+    box-shadow: 0 0 8px var(--accent);
+    animation: caret-blink 1s ease-in-out infinite;
+  }
+
+  .keyboard-key {
+    transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 0 var(--border);
+  }
+
+  .keyboard-key:active,
+  .keyboard-key.is-pressed {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 transparent, 0 0 12px var(--accent);
+    background-color: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent-strong);
+  }
+
+  .glass-card {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    border: 1px solid var(--border);
   }
 
   .motion-rise {
@@ -156,15 +201,15 @@ textarea {
 @media (min-width: 640px) {
   @layer components {
     .typing-size-comfort {
-      font-size: 2.15rem;
+      font-size: 1.65rem;
     }
 
     .typing-size-large {
-      font-size: 2.65rem;
+      font-size: 2.05rem;
     }
 
     .typing-size-extra {
-      font-size: 3.15rem;
+      font-size: 2.5rem;
     }
   }
 }
@@ -173,8 +218,18 @@ textarea {
   .motion-rise,
   .motion-rise-delayed,
   .motion-float,
-  .motion-pulse-soft {
+  .motion-pulse-soft,
+  .typing-caret {
     animation: none;
+  }
+}
+
+@keyframes caret-blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
   }
 }
 
@@ -197,7 +252,7 @@ textarea {
   }
 
   50% {
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
 }
 
@@ -211,3 +266,41 @@ textarea {
     box-shadow: 0 0 0 10px transparent;
   }
 }
+
+
+/* 
+.wrapper {
+  position: relative;
+  font-size: 3rem;
+  font-family: monospace;
+}
+
+.base {
+  color: gray;
+}
+
+.typed {
+  color: limegreen;
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid white;
+  animation: typing 11s linear infinite;
+}
+
+@keyframes typing {
+  from {
+    width:0 ;
+  }
+  to {
+    width: 100%;
+  }
+  from {
+    height:0 ;
+  }
+  to {
+    height: 100%;
+  }
+} */
