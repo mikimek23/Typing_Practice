@@ -1,124 +1,202 @@
+import { useState, type ReactNode } from 'react'
 import {
   BarChart3,
-  BookOpen,
   CheckCircle2,
-  FileText,
+  HelpCircle,
   Keyboard,
-  Moon,
-  Type,
+  Layers,
+  Target,
+  Volume2,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/Button'
+import { TipsModal } from '../components/TipsModal'
 
-const sections = [
+const techStack = [
   {
-    icon: <Keyboard size={20} />,
-    title: 'Two ways to measure skill',
-    body: 'Timed mode is ideal for quick benchmarking, while passage mode measures how well a user maintains accuracy from the first character to the final word.',
+    name: 'React 19 & TypeScript',
+    desc: 'Strict typing and modern concurrent component lifecycle.',
   },
   {
-    icon: <Type size={20} />,
-    title: 'Accessibility-minded reading',
-    body: 'The typing area offers Comfort, Large, and Extra large sizes so the test remains usable on phones, laptops, and larger displays.',
+    name: 'Tailwind CSS v4',
+    desc: 'Next-generation CSS engine with custom variant dark mode and tokens.',
   },
   {
-    icon: <BarChart3 size={20} />,
-    title: 'Result pages with context',
-    body: 'After a test, users see speed, accuracy, duration, progress, character counts, and save status on a dedicated page built for review.',
+    name: 'Web Audio API',
+    desc: 'Zero-asset synthesized mechanical switch click acoustics.',
   },
   {
-    icon: <FileText size={20} />,
-    title: 'Personal practice material',
-    body: 'Accounts can store private passages, making the tool useful for interview prep, course material, documentation, or article drafts.',
+    name: 'SVG Data Visualization',
+    desc: 'Dynamic timeline chart plotting pace, raw speed, and error points.',
+  },
+  {
+    name: 'Express & Prisma',
+    desc: 'PostgreSQL backend with secure JWT authentication and test history.',
   },
 ]
 
 export const AboutPage = () => {
+  const [isTipsOpen, setIsTipsOpen] = useState(false)
+
   return (
-    <main className='app-page py-10'>
-      <div className='app-shell'>
-        <section className='grid gap-8 lg:grid-cols-[1fr_420px] lg:items-center'>
-          <div className='motion-rise'>
-            <p className='mb-4 inline-flex items-center gap-2 rounded-md app-surface px-3 py-2 text-sm font-black app-muted'>
-              <CheckCircle2 size={17} />
-              About TypingPro
-            </p>
-            <h1 className='max-w-3xl text-5xl font-black leading-tight app-text'>
-              A typing test designed for practice, review, and steady
-              improvement.
-            </h1>
-            <p className='mt-6 max-w-2xl text-lg leading-8 app-muted'>
-              TypingPro keeps the main workflow simple: choose a passage, type
-              in a readable workspace, then review a result that explains what
-              happened. It uses the current backend for accounts, passages,
-              saved results, and private text libraries.
-            </p>
-            <div className='mt-8 flex flex-col gap-3 sm:flex-row'>
-              <Link to='/test'>
-                <Button size='lg' icon={<Keyboard size={19} />}>
-                  Start test
-                </Button>
-              </Link>
-              <Link to='/blog'>
+    <>
+      <main className='app-page py-10 sm:py-16'>
+        <div className='app-shell space-y-12'>
+          {/* Header */}
+          <section className='grid gap-8 lg:grid-cols-[1.1fr_420px] lg:items-center'>
+            <div className='motion-rise space-y-5'>
+              <div className='inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1.5 text-xs font-bold text-[var(--muted)] shadow-xs'>
+                <CheckCircle2 size={16} className='text-emerald-500' />
+                <span>About TypingPro Benchmark</span>
+              </div>
+              <h1 className='text-4xl font-black tracking-tight text-[var(--foreground)] sm:text-5xl leading-tight'>
+                Engineered for feedback, consistency, and speed.
+              </h1>
+              <p className='text-base leading-relaxed text-[var(--muted)] sm:text-lg'>
+                TypingPro was designed to eliminate the distractions of
+                conventional typing tests. It delivers high-contrast typography,
+                zero-asset mechanical audio acoustics, real-time keyboard
+                visualizers, and second-by-second pace analytics.
+              </p>
+              <div className='flex flex-wrap items-center gap-3 pt-2'>
+                <Link to='/test'>
+                  <Button size='lg' icon={<Keyboard size={18} />}>
+                    Start Typing Test
+                  </Button>
+                </Link>
                 <Button
                   size='lg'
                   variant='secondary'
-                  icon={<BookOpen size={19} />}
+                  onClick={() => setIsTipsOpen(true)}
+                  icon={<HelpCircle size={18} />}
                 >
-                  Read blog
+                  Shortcuts & Tips
                 </Button>
-              </Link>
+              </div>
             </div>
-          </div>
 
-          <aside className='app-surface rounded-lg p-6 motion-float'>
-            <h2 className='text-2xl font-black app-text'>Product priorities</h2>
-            <div className='mt-5 space-y-4'>
-              <Priority
-                icon={<Moon size={18} />}
-                text='Consistent light and dark mode contrast.'
-              />
-              <Priority
-                icon={<Type size={18} />}
-                text='Large passage text that can be adjusted.'
-              />
-              <Priority
-                icon={<BarChart3 size={18} />}
-                text='Compact mobile metrics that keep the passage visible.'
-              />
-              <Priority
-                icon={<BookOpen size={18} />}
-                text='Inline access to the connected blog app.'
-              />
+            {/* Architecture Card */}
+            <aside className='app-surface rounded-3xl p-6 sm:p-7 shadow-lg border border-[var(--border)] motion-float space-y-4'>
+              <div className='flex items-center gap-2.5 text-cyan-600 dark:text-cyan-400 font-black text-sm uppercase tracking-wider'>
+                <Layers size={18} />
+                <span>Architecture & Stack</span>
+              </div>
+              <div className='space-y-3 pt-1'>
+                {techStack.map((tech) => (
+                  <div
+                    key={tech.name}
+                    className='rounded-xl border border-[var(--border)] bg-[var(--surface-soft)] p-3'
+                  >
+                    <p className='font-bold text-xs text-[var(--foreground)]'>
+                      {tech.name}
+                    </p>
+                    <p className='mt-0.5 text-[0.72rem] text-[var(--muted)] leading-normal'>
+                      {tech.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          </section>
+
+          {/* Typing Math & Formula Explanation */}
+          <section className='app-surface rounded-3xl p-6 sm:p-8 shadow-sm border border-[var(--border)] space-y-5'>
+            <div className='flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-xs uppercase tracking-wider'>
+              <Target size={17} />
+              <span>Standardized Scoring Math</span>
             </div>
-          </aside>
-        </section>
+            <h2 className='text-2xl font-black text-[var(--foreground)] sm:text-3xl'>
+              How Words Per Minute (WPM) Is Calculated
+            </h2>
+            <p className='max-w-3xl text-sm leading-relaxed text-[var(--muted)]'>
+              Unlike naive word counters that treat the word "a" the same as
+              "extraordinary", TypingPro adheres to the international typing
+              speed standard:
+            </p>
 
-        <section className='mt-8 grid gap-4 md:grid-cols-2'>
-          {sections.map((section) => (
-            <article
-              key={section.title}
-              className='app-surface rounded-lg p-5 motion-rise-delayed transition hover:-translate-y-1'
-            >
-              <span className='grid h-11 w-11 place-items-center rounded-md bg-cyan-50 text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-200'>
-                {section.icon}
-              </span>
-              <h2 className='mt-5 text-xl font-black app-text'>
-                {section.title}
-              </h2>
-              <p className='mt-3 leading-7 app-muted'>{section.body}</p>
-            </article>
-          ))}
-        </section>
-      </div>
-    </main>
+            <div className='grid gap-4 sm:grid-cols-3 pt-2'>
+              <div className='rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4 space-y-1.5'>
+                <p className='text-xs font-bold uppercase tracking-wider text-[var(--muted)]'>
+                  1 Standard Word
+                </p>
+                <p className='text-2xl font-black text-[var(--foreground)]'>
+                  5 Keystrokes
+                </p>
+                <p className='text-xs text-[var(--muted)]'>
+                  Spaces and punctuation count as characters.
+                </p>
+              </div>
+
+              <div className='rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4 space-y-1.5'>
+                <p className='text-xs font-bold uppercase tracking-wider text-[var(--muted)]'>
+                  Net WPM Formula
+                </p>
+                <p className='text-xl font-black text-cyan-600 dark:text-cyan-400'>
+                  (Correct Chars / 5) / Min
+                </p>
+                <p className='text-xs text-[var(--muted)]'>
+                  Measures clean, readable output.
+                </p>
+              </div>
+
+              <div className='rounded-2xl border border-[var(--border)] bg-[var(--surface-soft)] p-4 space-y-1.5'>
+                <p className='text-xs font-bold uppercase tracking-wider text-[var(--muted)]'>
+                  Accuracy Ratio
+                </p>
+                <p className='text-xl font-black text-emerald-600 dark:text-emerald-400'>
+                  Correct / Total Keys
+                </p>
+                <p className='text-xs text-[var(--muted)]'>
+                  Penalizes stray and uncorrected strokes.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Key Product Pillars */}
+          <section className='grid gap-5 sm:grid-cols-2 lg:grid-cols-3'>
+            <PillarCard
+              icon={<Volume2 size={20} />}
+              title='Acoustic Synthesis'
+              description='Tactile mechanical switch audio synthesized in real time via Web Audio API without bulky audio files or network latency.'
+            />
+            <PillarCard
+              icon={<Keyboard size={20} />}
+              title='Tactile Visualizer'
+              description='Interactive on-screen keyboard guides typists back to the home row anchor keys (F & J) with zero looking down.'
+            />
+            <PillarCard
+              icon={<BarChart3 size={20} />}
+              title='Pace Timeline'
+              description='Interactive SVG analytics expose whether speed was steady or punctuated by panic pauses and error clusters.'
+            />
+          </section>
+        </div>
+      </main>
+
+      <TipsModal isOpen={isTipsOpen} onClose={() => setIsTipsOpen(false)} />
+    </>
   )
 }
 
-const Priority = ({ icon, text }: { icon: ReactNode; text: string }) => (
-  <div className='flex items-center gap-3 rounded-md app-surface-soft p-3'>
-    <span className='text-cyan-700 dark:text-cyan-200'>{icon}</span>
-    <p className='text-sm font-bold app-text'>{text}</p>
+const PillarCard = ({
+  icon,
+  title,
+  description,
+}: {
+  icon: ReactNode
+  title: string
+  description: string
+}) => (
+  <div className='app-surface rounded-2xl p-6 shadow-sm border border-[var(--border)] transition hover:-translate-y-1'>
+    <span className='grid h-11 w-11 place-items-center rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'>
+      {icon}
+    </span>
+    <h3 className='mt-4 text-lg font-black text-[var(--foreground)]'>
+      {title}
+    </h3>
+    <p className='mt-2 text-xs leading-relaxed text-[var(--muted)]'>
+      {description}
+    </p>
   </div>
 )

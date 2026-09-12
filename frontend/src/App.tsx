@@ -1,11 +1,10 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { bootstrapSession, initializeApiAuthHandlers } from './api/auth'
-import { Navabar } from './components/Navabar'
+import { Navbar } from './components/Navbar'
 import { ProtectedRoute } from './components/routes/ProtectedRoute'
 import { AboutPage } from './pages/AboutPage'
 import { AuthPage } from './pages/AuthPage'
-import { BlogPage } from './pages/BlogPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { HomePage } from './pages/HomePage'
 import { ResultPage } from './pages/ResultPage'
@@ -24,13 +23,12 @@ const AppRoutes = () => {
 
   return (
     <>
-      <Navabar />
+      <Navbar />
       <Routes>
         <Route path='/' element={<HomePage />} />
         <Route path='/test' element={<TypingPage />} />
         <Route path='/result' element={<ResultPage />} />
         <Route path='/about' element={<AboutPage />} />
-        <Route path='/blog' element={<BlogPage />} />
         <Route path='/login' element={<AuthPage mode='login' />} />
         <Route path='/register' element={<AuthPage mode='register' />} />
         <Route element={<ProtectedRoute />}>

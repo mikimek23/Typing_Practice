@@ -13,7 +13,7 @@ export const getEnv = () => {
   const corsOrigin =
     process.env.CORS_ORIGINS ||
     process.env.CORS_ORIGIN ||
-    'http://localhost:5173'
+    'http://localhost:5173,http://localhost:5174'
   return {
     databaseUrl: process.env.DATABASE_URL,
     nodeEnv,
