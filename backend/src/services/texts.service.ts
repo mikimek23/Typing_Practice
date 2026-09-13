@@ -77,6 +77,9 @@ export const addDefaultTextService = async (data: AddTextInput) => {
 
   const wordCount = content.split(/\s+/).length
   const difficulty = normalizeDifficulty(data.difficulty)
+  if (!difficulty) {
+    throw new AppError('Difficulty is required', 400)
+  }
   const newText = await prisma.text.create({
     data: {
       title,
@@ -107,6 +110,9 @@ export const addTextService = async (data: AddTextInput, id: string) => {
   const content = data.content.trim()
   const wordCount = content.split(/\s+/).length
   const difficulty = normalizeDifficulty(data.difficulty)
+  if (!difficulty) {
+    throw new AppError('Difficulty is required', 400)
+  }
   const newText = await prisma.text.create({
     data: {
       title,
@@ -188,7 +194,11 @@ export const updateMyTextService = async (
   }
 
   if (data.difficulty !== undefined) {
-    updateData.difficulty = normalizeDifficulty(data.difficulty)
+    const diff = normalizeDifficulty(data.difficulty)
+    if (!diff) {
+      throw new AppError('Invalid difficulty', 400)
+    }
+    updateData.difficulty = diff
   }
   if (Object.keys(updateData).length === 0) {
     throw new AppError('No fields to update', 400)

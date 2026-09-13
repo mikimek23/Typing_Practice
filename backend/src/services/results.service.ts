@@ -25,6 +25,9 @@ const normalizeMode = (mode: unknown) => {
 }
 export const saveResultService = async (data: ResultInput, userId: string) => {
   const normalizedMode = normalizeMode(data.mode)
+  if (!normalizedMode) {
+    throw new AppError('Mode is required', 400)
+  }
   const incorrectCharacters = data.totalKeyPresses - data.correctCharacters
   const wpm = Math.floor(
     data.correctCharacters / 5 / (data.durationSeconds / 60),

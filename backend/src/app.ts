@@ -16,7 +16,10 @@ app.use(morgan('dev'))
 const allowOrigins = enva.corsOrigins
 app.use(
   cors({
-    origin: (origin, callback) => {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
       if (!origin || allowOrigins.includes(origin)) {
         callback(null, true)
       } else {
